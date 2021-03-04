@@ -22,6 +22,7 @@ test_backtrace(int x)
 void
 i386_init(void)
 {
+
 	extern char edata[], end[];
 
 	// Before doing anything else, complete the ELF loading process.
@@ -37,6 +38,8 @@ i386_init(void)
 
 	// Test the stack backtrace function (lab 1 only)
 	test_backtrace(5);
+
+
 
 	// Drop into the kernel monitor.
 	while (1)
