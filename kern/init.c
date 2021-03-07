@@ -17,9 +17,7 @@
 
 static void boot_aps(void);
 
-
-void
-i386_init(void)
+void i386_init(void)
 {
 	// Initialize the console.
 	// Can't call cprintf until after we do this!
@@ -59,6 +57,7 @@ i386_init(void)
 	sched_yield();
 }
 
+<<<<<<< HEAD
 // While boot_aps is booting a given CPU, it communicates the per-core
 // stack pointer that should be loaded by mpentry.S to that CPU in
 // this variable.
@@ -114,6 +113,7 @@ mp_main(void)
 	for (;;);
 }
 
+
 /*
  * Variable panicstr contains argument to first call to panic; used as flag
  * to indicate that the kernel has already called panic.
@@ -124,8 +124,7 @@ const char *panicstr;
  * Panic is called on unresolvable fatal errors.
  * It prints "panic: mesg", and then enters the kernel monitor.
  */
-void
-_panic(const char *file, int line, const char *fmt,...)
+void _panic(const char *file, int line, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -149,8 +148,7 @@ dead:
 }
 
 /* like panic, but don't */
-void
-_warn(const char *file, int line, const char *fmt,...)
+void _warn(const char *file, int line, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -160,3 +158,4 @@ _warn(const char *file, int line, const char *fmt,...)
 	cprintf("\n");
 	va_end(ap);
 }
+
