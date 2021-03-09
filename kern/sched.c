@@ -8,6 +8,7 @@
 void sched_halt(void);
 
 // Choose a user environment to run and run it.
+//选一个环境去跑，用round-robin调度算法
 void
 sched_yield(void)
 {
@@ -91,7 +92,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"

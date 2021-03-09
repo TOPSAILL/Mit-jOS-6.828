@@ -72,7 +72,7 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
- 	    void T_DIVIDE_handler();
+ 	void T_DIVIDE_handler();
     void T_DEBUG_handler();
     void T_NMI_handler();
     void T_BRKPT_handler();
@@ -91,7 +91,13 @@ trap_init(void)
     void T_MCHK_handler();
     void T_SIMDERR_handler();
     void T_SYSCALL_handler();
-
+	//lab4 idq
+	void th_irq_timer();
+    void th_irq_kbd();
+    void th_irq_serial();
+    void th_irq_spurious();
+    void th_irq_ide();
+    void th_irq_error();
     SETGATE(idt[T_DIVIDE], 0, GD_KT, T_DIVIDE_handler, 0);
     SETGATE(idt[T_DEBUG], 0, GD_KT, T_DEBUG_handler, 0);
     SETGATE(idt[T_NMI], 0, GD_KT, T_NMI_handler, 0);
@@ -110,7 +116,14 @@ trap_init(void)
     SETGATE(idt[T_ALIGN], 0, GD_KT, T_ALIGN_handler, 0);
     SETGATE(idt[T_MCHK], 0, GD_KT, T_MCHK_handler, 0);
     SETGATE(idt[T_SIMDERR], 0, GD_KT, T_SIMDERR_handler, 0);
-    SETGATE(idt[T_SYSCALL], 1, GD_KT, T_SYSCALL_handler, 3);
+    SETGATE(idt[T_SYSCALL], 0, GD_KT, T_SYSCALL_handler, 3);
+	//lab4 idq
+	SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, &th_irq_timer, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, &th_irq_kbd, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, &th_irq_serial, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_SPURIOUS], 0, GD_KT, &th_irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_IDE], 0, GD_KT, &th_irq_ide, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_ERROR], 0, GD_KT, &th_irq_error, 0);
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -232,7 +245,11 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
-	
+	if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER){
+		lapic_eoi();
+		sched_yield();
+		return;
+	}
 
 	if (tf->tf_trapno == T_BRKPT) {
 		monitor(tf);
@@ -245,7 +262,7 @@ trap_dispatch(struct Trapframe *tf)
 		regs.reg_ecx, regs.reg_ebx, regs.reg_edi, regs.reg_esi);
 		return;
 	}
-
+	
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)

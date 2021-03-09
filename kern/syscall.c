@@ -169,7 +169,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	//   allocated!
 
 	// LAB 4: Your code here.
-		struct Env *e;
+	struct Env *e;
 	int r;
 	struct PageInfo* pp;
 	if ((uint32_t)va >= UTOP || PGOFF(va) != 0)
@@ -288,18 +288,19 @@ sys_page_unmap(envid_t envid, void *va)
 // Try to send 'value' to the target env 'envid'.
 // If srcva < UTOP, then also send page currently mapped at 'srcva',
 // so that receiver gets a duplicate mapping of the same page.
-//
+// 
 // The send fails with a return value of -E_IPC_NOT_RECV if the
-// target is not blocked, waiting for an IPC.
+// target is not blocked, waiting for an IPC.  [target不是阻塞状态]
 //
 // The send also can fail for the other reasons listed below.
 //
 // Otherwise, the send succeeds, and the target's ipc fields are
-// updated as follows:
+// updated as follows: [成功发送 更新]
 //    env_ipc_recving is set to 0 to block future sends;
 //    env_ipc_from is set to the sending envid;
 //    env_ipc_value is set to the 'value' parameter;
 //    env_ipc_perm is set to 'perm' if a page was transferred, 0 otherwise.
+
 // The target environment is marked runnable again, returning 0
 // from the paused sys_ipc_recv system call.  (Hint: does the
 // sys_ipc_recv function ever actually return?)
@@ -310,16 +311,16 @@ sys_page_unmap(envid_t envid, void *va)
 //
 // Returns 0 on success, < 0 on error.
 // Errors are:
-//	-E_BAD_ENV if environment envid doesn't currently exist.
+//	-E_BAD_ENV if environment envid doesn't currently exist.（环境不存在）
 //		(No need to check permissions.)
-//	-E_IPC_NOT_RECV if envid is not currently blocked in sys_ipc_recv,
+//	-E_IPC_NOT_RECV if envid is not currently blocked in sys_ipc_recv, （未阻塞 或 另一个想发）
 //		or another environment managed to send first.
-//	-E_INVAL if srcva < UTOP but srcva is not page-aligned.
-//	-E_INVAL if srcva < UTOP and perm is inappropriate
+//	-E_INVAL if srcva < UTOP but srcva is not page-aligned.（不对齐）
+//	-E_INVAL if srcva < UTOP and perm is inappropriate（perm不对）
 //		(see sys_page_alloc).
-//	-E_INVAL if srcva < UTOP but srcva is not mapped in the caller's
+//	-E_INVAL if srcva < UTOP but srcva is not mapped in the caller's（srcva没映射）
 //		address space.
-//	-E_INVAL if (perm & PTE_W), but srcva is read-only in the
+//	-E_INVAL if (perm & PTE_W), but srcva is read-only in the（perm冲突）
 //		current environment's address space.
 //	-E_NO_MEM if there's not enough memory to map srcva in envid's
 //		address space.
@@ -327,7 +328,27 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	struct Env *e;
+	struct PageInfo *pp;
+	pte_t* pte;
+	int r;
+	if((r = envid2env(envid,&e,0))!=0) return r; //get the env e接收方
+	if(e->env_ipc_recving ==0) return -E_IPC_NOT_RECV;
+	if((uint32_t)srcva < UTOP){
+		if(PGOFF(srcva)!=0) return -E_INVAL;
+		if((perm&(PTE_U|PTE_P))!=(PTE_U|PTE_P)) return -E_INVAL;
+		if((perm & ~(PTE_SYSCALL))!=0) return -E_INVAL;
+		if((pp=page_lookup(curenv->env_pgdir,srcva,&pte))==NULL) return -E_INVAL;
+		if((*pte&PTE_W)==0 &&(perm &PTE_W)==PTE_W) return -E_INVAL;
+		if((r=page_insert(e->env_pgdir,pp,e->env_ipc_dstva,perm))) return r;
+		e->env_ipc_perm = perm;
+	}
+	else e->env_ipc_perm = 0;
+	e->env_ipc_recving = 0;
+	e->env_ipc_from = curenv->env_id;
+	e->env_ipc_value = value;
+	e->env_status = ENV_RUNNABLE;
+	return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -345,7 +366,12 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	if ((uint32_t)dstva < UTOP && PGOFF(dstva) != 0) {
+        return -E_INVAL;
+    }
+	curenv->env_ipc_recving = 1;
+	curenv->env_ipc_dstva = dstva;
+	curenv->env_status = ENV_NOT_RUNNABLE;
 	return 0;
 }
 
@@ -382,6 +408,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
     	return sys_page_unmap(a1, (void *)a2);
 	case SYS_env_set_pgfault_upcall:
     	return sys_env_set_pgfault_upcall(a1, (void *)a2);
+	case SYS_ipc_recv:
+    	return sys_ipc_recv((void *)a1);
+	case SYS_ipc_try_send:
+    	return sys_ipc_try_send(a1, a2, (void *)a3, a4);
 	default:
 		return -E_INVAL;
 	}
