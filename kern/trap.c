@@ -72,7 +72,7 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
- 	void T_DIVIDE_handler();
+    void T_DIVIDE_handler();
     void T_DEBUG_handler();
     void T_NMI_handler();
     void T_BRKPT_handler();

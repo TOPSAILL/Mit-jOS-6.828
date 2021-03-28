@@ -37,7 +37,7 @@ _pgfault_upcall:
 	movl _pgfault_handler, %eax
 	call *%eax
 	addl $4, %esp			// pop function argument
-	
+
 	// Now the C page fault handler has returned and you must return
 	// to the trap time state.
 	// Push trap-time %eip onto the trap-time stack.
@@ -66,25 +66,25 @@ _pgfault_upcall:
 	//
 	// LAB 4: Your code here.
 	movl 0x30(%esp),%ecx // trap-time esp
-	subl $4,%ecx
-	movl %ecx,0x30(%esp) //trap-time esp - 4 
+	subl $4,%ecx //trap-time esp - 4
+	movl %ecx,0x30(%esp) //put it back
 	movl 0x28(%esp),%edx // trap-time eip
-	movl %edx,(%ecx)
+	movl %edx,(%ecx)     //trap-time eip in  new esp
 
 	// Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
 	// LAB 4: Your code here.
 	addl $8,%esp   //skip fault_va and tf_err
-	popal
+	popal           // pop PushRegs
 	// Restore eflags from the stack.  After you do this, you can
 	// no longer use arithmetic operations or anything else that
 	// modifies eflags.
 	// LAB 4: Your code here.
 	addl $4,%esp //skip eip
-	popfl
+	popfl			//pop eflags
 	// Switch back to the adjusted trap-time stack.
 	// LAB 4: Your code here.
-	pop %esp
+	pop %esp //which has been enlarged
 	// Return to re-execute the instruction that faulted.
 	// LAB 4: Your code here.
-	ret 
+	ret
